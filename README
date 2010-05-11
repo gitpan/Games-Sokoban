@@ -1,0 +1,46 @@
+NAME
+    Games::Sokoban - load/transform/save sokoban levels in various formats
+
+SYNOPSIS
+     use Games::Sokoban;
+
+DESCRIPTION
+    I needed something like this quickly - if you need better docs, you have
+    to ask.
+
+    Supports xsb (text), rle, sokevo and a small "binpack" format for input
+    and output and can normalise levels as well as calculate unique IDs.
+
+    $level = new Games::Sokoban [format => "text|binpack"], [data =>
+    "###..."]
+    $level = new_from_file Games::Sokoban $path[, $format]
+    $level->data ([$new_data, [$new_data_format]]])
+    $text = $level->as_text
+    $binary = $level->as_binpack
+    @lines = $level->as_lines
+    @lines = $level->as_rle
+        http://www.sokobano.de/wiki/index.php?title=Level_format
+
+    ($x, $y) = $level->start
+    $level->hflip
+    $level->vflip
+    $level->transpose # topleft to bottomright
+    $level->rotate_90
+    $level->rotate_180
+    $id = $level->simplify
+        Detect playable area, crop to smallest size.
+
+    $id = $level->normalise
+        normalises the level map and calculates/returns it's identity code
+
+        http://www.sourcecode.se/sokoban/level_id.php, assume uppercase and
+        hex.
+
+    $levels = Games::Sokoban::load_sokevo $path
+        Loads a sokevo snapshot/history file and returns all contained
+        levels as Games::Sokoban objects in an arrayref.
+
+AUTHOR
+     Marc Lehmann <schmorp@schmorp.de>
+     http://home.schmorp.de/
+

@@ -1,0 +1,8 @@
+Revision history for Perl extension Games::Sokoban
+
+0.02  Wed May 12 01:20:37 CEST 2010
+	- first release, just for fun.
+
+0.01  Tue May 11 21:22:32 CEST 2010
+	- original version; cloned from Convert::Scalar.
+
