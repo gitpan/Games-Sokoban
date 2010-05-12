@@ -1,5 +1,8 @@
 Revision history for Perl extension Games::Sokoban
 
+1.01 Wed May 12 22:48:44 CEST 2010
+	- hmm, I thought I had fixed t/00_load.t before...
+
 1.0  Wed May 12 19:51:45 CEST 2010
 	- better support for sokevo internal level format,
           also parse meta information for each level.

@@ -24,7 +24,7 @@ use common::sense;
 use Carp ();
 use List::Util ();
 
-our $VERSION = '1.0';
+our $VERSION = '1.01';
 
 =item $level = new Games::Sokoban [format => "text|rle|binpack"], [data => "###..."]
 
