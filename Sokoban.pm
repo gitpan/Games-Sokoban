@@ -24,9 +24,9 @@ use common::sense;
 use Carp ();
 use List::Util ();
 
-our $VERSION = '0.02';
+our $VERSION = '1.0';
 
-=item $level = new Games::Sokoban [format => "text|binpack"], [data => "###..."]
+=item $level = new Games::Sokoban [format => "text|rle|binpack"], [data => "###..."]
 
 =cut
 
@@ -60,9 +60,7 @@ sub detect_format($) {
 
    return "text" if $data =~ /^[ #\@\*\$\.\+\015\012\-_]+$/;
 
-   warn $data;#d#
    return "rle"  if $data =~ /^[ #\@\*\$\.\+\015\012\-_|1-9]+$/;
-   exit 5;#d#
 
    my ($a, $b) = unpack "ww", $data;
    return "binpack" if defined $a && defined $b;
@@ -70,57 +68,62 @@ sub detect_format($) {
    Carp::croak "unable to autodetect sokoban level format";
 }
 
-=item $level->data ([$new_data, [$new_data_format]]])
+=item $level->data ([$new_data, [$new_data_format]])
+
+Sets the level from the given data.
 
 =cut
 
 sub data {
-   my ($self, $data, $format) = @_;
+   if (@_ > 1) {
+      my ($self, $data, $format) = @_;
 
-   $format ||= detect_format $data;
+      $format ||= detect_format $data;
 
-   if ($format eq "text" or $format eq "rle") {
-      $data =~ y/-_|/  \n/;
-      $data =~ s/(\d)(.)/$2 x $1/ge;
-      my @lines = split /[\015\012]+/, $data;
-      my $w = List::Util::max map length, @lines;
+      if ($format eq "text" or $format eq "rle") {
+         $data =~ y/-_|/  \n/;
+         $data =~ s/(\d)(.)/$2 x $1/ge;
+         my @lines = split /[\015\012]+/, $data;
+         my $w = List::Util::max map length, @lines;
 
-      $_ .= " " x ($w - length)
-         for @lines;
+         $_ .= " " x ($w - length)
+            for @lines;
 
-      $self->{data} = join "\n", @lines;
+         $self->{data} = join "\n", @lines;
 
-   } elsif ($format eq "binpack") {
-      (my ($w, $s), $data) = unpack "wwB*", $data;
+      } elsif ($format eq "binpack") {
+         (my ($w, $s), $data) = unpack "wwB*", $data;
 
-      my @enc = ('#', '$', '.', '   ', ' ', '###', '*', '# ');
+         my @enc = ('#', '$', '.', '   ', ' ', '###', '*', '# ');
 
-      $data = join "",
-              map $enc[$_],
-              unpack "C*",
-              pack "(b*)*",
-              unpack "(a3)*", $data;
+         $data = join "",
+                 map $enc[$_],
+                 unpack "C*",
+                 pack "(b*)*",
+                 unpack "(a3)*", $data;
 
-      # clip extra chars (max. 2)
-      my $extra = (length $data) % $w;
-      substr $data, -$extra, $extra, "" if $extra;
+         # clip extra chars (max. 2)
+         my $extra = (length $data) % $w;
+         substr $data, -$extra, $extra, "" if $extra;
 
-      (substr $data, $s, 1) =~ y/ ./@+/;
+         (substr $data, $s, 1) =~ y/ ./@+/;
 
-      $self->{data} =
-        join "\n",
-        map "#$_#",
-            "#" x $w,
-            (unpack "(a$w)*", $data),
-            "#" x $w;
-        
-   } else {
-      Carp::croak "$format: unsupported sokoban level format requested";
+         $self->{data} =
+           join "\n",
+           map "#$_#",
+               "#" x $w,
+               (unpack "(a$w)*", $data),
+               "#" x $w;
+           
+      } else {
+         Carp::croak "$format: unsupported sokoban level format requested";
+      }
+
+      $self->{format} = $format;
+      $self->update;
    }
 
-   $self->update;
-
-   ($self->{data})
+   $_[0]{data}
 }
 
 sub pos2xy {
@@ -160,6 +163,12 @@ sub as_text {
 }
 
 =item $binary = $level->as_binpack
+
+Binpack is a very compact binary format (usually 17% of the size of an xsb
+file), that is still reasonably easy to encode/decode.
+
+It only tries to store simplified levels with full fidelity - other levels
+can be slightly changed outside the playable area.
 
 =cut
 
@@ -207,7 +216,7 @@ sub as_lines {
    split /\n/, $_[0]{data}
 }
 
-=item @lines = $level->as_rle
+=item $line = $level->as_rle
 
 http://www.sokobano.de/wiki/index.php?title=Level_format
 
@@ -225,6 +234,8 @@ sub as_rle {
 
 =item ($x, $y) = $level->start
 
+Returns (0-based) starting coordinate.
+
 =cut
 
 sub start {
@@ -236,13 +247,23 @@ sub start {
 
 =item $level->hflip
 
+Mirror horizontally.
+
 =item $level->vflip
 
-=item $level->transpose # topleft to bottomright
+Mirror vertically.
+
+=item $level->transpose
+
+Transpose level (mirror at top-left/bottom-right diagonal).
 
 =item $level->rotate_90
 
+Rotate by 90 degrees clockwise.
+
 =item $level->rotate_180
+
+Rotate by 180 degrees clockwise.
 
 =cut
 
@@ -340,8 +361,8 @@ sub simplify {
 
 =item $id = $level->normalise
 
-normalises the level map and calculates/returns it's identity code
-
+Simplifies the level map and calculates/returns its identity code.
+.
 http://www.sourcecode.se/sokoban/level_id.php, assume uppercase and hex.
 
 =cut
@@ -385,21 +406,30 @@ Games::Sokoban objects in an arrayref.
 =cut
 
 sub load_sokevo($) {
-   open my $fh, "<", $_[0]
+   open my $fh, "<:crlf", $_[0]
       or Carp::croak "$_[0]: $!";
 
    my @levels;
 
-   while (<$fh>) {
-      if (/^##+$/) {
-         my $data = $_;
-         while (<$fh>) {
-            $data .= $_;
-            last if /^$/;
-         }
+   # skip file header
+   local $/ = "\n\n";
+   scalar <$fh>;
 
-         push @levels, new Games::Sokoban data => $data;
-      }
+   while (<$fh>) {
+      chomp;
+      my %meta = split /(?:: |\n)/;
+
+      $_ = <$fh>;
+
+      /^##+\n/ or last;
+
+      # sokevo internally locks some cells
+      y/^%:,;-=?/ #.$* +#/;
+
+      # skip levels without pusher
+      y/@+// or next;
+
+      push @levels, new Games::Sokoban data => $_, meta => \%meta;
    }
 
    \@levels

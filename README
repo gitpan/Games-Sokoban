@@ -11,28 +11,47 @@ DESCRIPTION
     Supports xsb (text), rle, sokevo and a small "binpack" format for input
     and output and can normalise levels as well as calculate unique IDs.
 
-    $level = new Games::Sokoban [format => "text|binpack"], [data =>
+    $level = new Games::Sokoban [format => "text|rle|binpack"], [data =>
     "###..."]
     $level = new_from_file Games::Sokoban $path[, $format]
-    $level->data ([$new_data, [$new_data_format]]])
+    $level->data ([$new_data, [$new_data_format]])
+        Sets the level from the given data.
+
     $text = $level->as_text
     $binary = $level->as_binpack
+        Binpack is a very compact binary format (usually 17% of the size of
+        an xsb file), that is still reasonably easy to encode/decode.
+
+        It only tries to store simplified levels with full fidelity - other
+        levels can be slightly changed outside the playable area.
+
     @lines = $level->as_lines
-    @lines = $level->as_rle
+    $line = $level->as_rle
         http://www.sokobano.de/wiki/index.php?title=Level_format
 
     ($x, $y) = $level->start
+        Returns (0-based) starting coordinate.
+
     $level->hflip
+        Mirror horizontally.
+
     $level->vflip
-    $level->transpose # topleft to bottomright
+        Mirror vertically.
+
+    $level->transpose
+        Transpose level (mirror at top-left/bottom-right diagonal).
+
     $level->rotate_90
+        Rotate by 90 degrees clockwise.
+
     $level->rotate_180
+        Rotate by 180 degrees clockwise.
+
     $id = $level->simplify
         Detect playable area, crop to smallest size.
 
     $id = $level->normalise
-        normalises the level map and calculates/returns it's identity code
-
+        Simplifies the level map and calculates/returns its identity code. .
         http://www.sourcecode.se/sokoban/level_id.php, assume uppercase and
         hex.
 
